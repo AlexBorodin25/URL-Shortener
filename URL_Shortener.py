@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import sqlite3
+
+from bokeh.layouts import row
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, HttpUrl
@@ -45,7 +47,7 @@ def startup():
     create_table()
 
 @app.post("/shorten")
-def short_code(data: CreateURLRequest, request: Request):
+def short_code(data: URLRequest, request: Request):
     expiration = data.expiration.isoformat() if data.expiration else None
 
     with get_db_conn() as conn:
@@ -58,7 +60,7 @@ def short_code(data: CreateURLRequest, request: Request):
         short_code = base62_encode(url_id)
 
         conn.execute(
-            """UPDATE urls SET short-code = ? WHERE id = ?""",
+            """UPDATE urls SET short_code = ? WHERE id = ?""",
             (short_code, url_id)
         )
 
@@ -78,7 +80,20 @@ def short_code(data: CreateURLRequest, request: Request):
 def redirect_url(short_code: str):
     with get_db_conn() as conn:
         row = conn.execute(
-            """SELECT url, expiration FROM urls WHERE short-code = ?"""
+            """SELECT url, expiration FROM urls WHERE short_code = ?"""
             (short_code,),
         ).fetchone()
 
+if row is None:
+    raise HTTPException(status_code=404, detail="URL not found")
+
+if row["expiration"]:
+    expiration = datetime.fromisoformat(row["expiration"])\
+
+    if expiration.tzinfo is None:
+        expiration = expiration.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expiration:
+            raise HTTPException(status_code=404, detail="URL has expired")
+
+return RedirectResponse(url=row["url"])
