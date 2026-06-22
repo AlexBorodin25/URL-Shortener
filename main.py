@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from contextlib import asynccontextmanager
 
 import sqlite3
 
@@ -10,7 +11,11 @@ from pydantic import BaseModel, HttpUrl
 DB_FILE = "urls.db"
 BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-app = FastAPI(title="URL_Shortener")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_table()
+    yield
+app = FastAPI(title="URL_Shortener", lifespan=lifespan)
 
 class UrlRequest(BaseModel):
     url: HttpUrl
@@ -41,9 +46,6 @@ def base62_encode(num: int) -> str:
 
     return encoded
 
-@app.on_event("startup")
-def startup():
-    create_table()
 
 @app.post("/shorten")
 def short_code(data: UrlRequest, request: Request):
