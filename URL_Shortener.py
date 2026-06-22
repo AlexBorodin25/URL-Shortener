@@ -23,14 +23,8 @@ def get_db_conn():
 def create_table():
     with get_db_conn() as conn:
         conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS urls (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               url TEXT NOT NULL,
-               short_code TEXT UNIQUE,
-               expiration TEXT
-            )
-            """
+            """CREATE TABLE IF NOT EXISTS urls (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT NOT NULL,short_code TEXT UNIQUE, expiration TEXT)"""
         )
         conn.commit()
 
@@ -56,9 +50,7 @@ def short_code(data: CreateURLRequest, request: Request):
 
     with get_db_conn() as conn:
         cursor = conn.execute(
-            """
-            INSERT INTO urls (url, expiration)
-            VALUES (?, ?)""",
+            """INSERT INTO urls (url, expiration) VALUES (?, ?)""",
             (str(data.url), expiration),
         )
 
@@ -66,14 +58,27 @@ def short_code(data: CreateURLRequest, request: Request):
         short_code = base62_encode(url_id)
 
         conn.execute(
-            """
-            UPDATE urls
-            SET short-code = ?
-            WHERE id = ?""",
+            """UPDATE urls SET short-code = ? WHERE id = ?""",
             (short_code, url_id)
         )
 
         conn.commit()
 
     shortened_url = str(request.base_url) + short_code
+
+    return {
+        "id": url_id,
+        "url": str(data.url),
+        "short_code": short_code,
+        "shortened_url": shortened_url,
+        "expiration": expiration,
+    }
+
+@app.get("/{short_code}")
+def redirect_url(short_code: str):
+    with get_db_conn() as conn:
+        row = conn.execute(
+            """SELECT url, expiration FROM urls WHERE short-code = ?"""
+            (short_code,),
+        ).fetchone()
 
