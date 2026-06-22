@@ -87,14 +87,14 @@ def home():
                 font-family: sans-serif;
                 max-width: 500px;
                 margin: 20px auto;
-                padding: 20px auto;
+                padding: 20px;
             }
             
             input,button {
                 width: 100%;
                 padding: 10px;
                 margin: 10px auto;
-                font_size: 14px;
+                font-size: 14px;
             }
             
             button {
@@ -114,7 +114,7 @@ def home():
         
         <form action="/shorten-form" method="post">
             <label>Enter a URL:</label>
-            <input type="url" name="url" placeholder="https://example.com">
+            <input type="url" name="url" placeholder="https://example.com" required>
             
             <label>Expiration date:</label>
             <input type="datetime-local" name="expiration">
@@ -161,7 +161,7 @@ def shorten_form(
                 font-family: sans-serif;
                 max-width: 500px;
                 margin: 20px auto;
-                padding: 20px auto;
+                padding: 20px;
             }}
             
             a {{
@@ -201,6 +201,6 @@ def redirect_url(short_code: str):
             expiration = expiration.replace(tzinfo=timezone.utc)
 
         if datetime.now(timezone.utc) > expiration:
-            raise HTTPException(status_code=404, detail="URL has expired")
+            raise HTTPException(status_code=410, detail="URL has expired")
 
     return RedirectResponse(url=row["url"])
