@@ -90,7 +90,7 @@ def redirect_url(short_code: str):
         expiration = datetime.fromisoformat(row["expiration"])
 
         if expiration.tzinfo is None:
-        expiration = expiration.replace(tzinfo=timezone.utc)
+            expiration = expiration.replace(tzinfo=timezone.utc)
 
         if datetime.now(timezone.utc) > expiration:
             raise HTTPException(status_code=404, detail="URL has expired")
