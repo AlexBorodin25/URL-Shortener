@@ -124,6 +124,65 @@ def home():
     </body>
     </html>
     """
+
+@app.post("/shorten-form", response_class=HTMLResponse)
+def shorten_form(
+        request: Request,
+        url: str = Form(...),
+        expiration: Optional[datetime] = Form(None),
+):
+    expiration_value = expiration.isoformat() if expiration else None
+
+    with get_db_conn() as conn:
+        cursor = conn.execute(
+            """INSERT INTO urls (url, expiration) VALUES (?, ?)""",
+            (url, expiration_value),
+        )
+
+        url_id = cursor.lastrowid
+        short_code_value = base62_encode(url_id)
+
+        conn.execute(
+            """UPDATE urls SET short_code = ? WHERE id = ?""",
+            (short_code_value, url_id),
+        )
+
+        conn.commit()
+
+    shortened_url = str(request.base_url) + short_code_value
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Short URL Created</title>
+        <style>
+            body {{
+                font-family: sans-serif;
+                max-width: 500px;
+                margin: 20px auto;
+                padding: 20px auto;
+            }}
+            
+            a {{
+                color: blue;
+                font-size: 14px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>Short URL Created</h1>
+        
+        <p>Original URL:</p>
+        <p>{url}</p>
+        
+        <p>Shortened URL:</p>
+        <p><a href="{shortened_url}">{shortened_url}</a></p>
+        
+        <p><a href="/"> Create another short URL</a></p>
+    </body>
+    </html>
+    """
 @app.get("/{short_code}")
 def redirect_url(short_code: str):
     with get_db_conn() as conn:
