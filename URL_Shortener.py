@@ -3,13 +3,12 @@ from typing import Optional
 
 import sqlite3
 
-from bokeh.layouts import row
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, HttpUrl
 
 DB_FILE = "urls.db"
-BASE62_ALPABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 app = FastAPI(title="URL_Shortener")
 
@@ -32,13 +31,13 @@ def create_table():
 
 def base62_encode(num: int) -> str:
     if num == 0:
-        return BASE62_ALPABET[0]
+        return BASE62_ALPHABET[0]
 
     encoded = ""
 
     while num > 0:
         num, remainder = divmod(num, 62)
-        encoded = BASE62_ALPABET[remainder] + encoded
+        encoded = BASE62_ALPHABET[remainder] + encoded
 
     return encoded
 
@@ -47,7 +46,7 @@ def startup():
     create_table()
 
 @app.post("/shorten")
-def short_code(data: URLRequest, request: Request):
+def short_code(data: UrlRequest, request: Request):
     expiration = data.expiration.isoformat() if data.expiration else None
 
     with get_db_conn() as conn:
@@ -80,20 +79,20 @@ def short_code(data: URLRequest, request: Request):
 def redirect_url(short_code: str):
     with get_db_conn() as conn:
         row = conn.execute(
-            """SELECT url, expiration FROM urls WHERE short_code = ?"""
+            """SELECT url, expiration FROM urls WHERE short_code = ?""",
             (short_code,),
         ).fetchone()
 
-if row is None:
-    raise HTTPException(status_code=404, detail="URL not found")
+    if row is None:
+        raise HTTPException(status_code=404, detail="URL not found")
 
-if row["expiration"]:
-    expiration = datetime.fromisoformat(row["expiration"])\
+    if row["expiration"]:
+        expiration = datetime.fromisoformat(row["expiration"])
 
-    if expiration.tzinfo is None:
+        if expiration.tzinfo is None:
         expiration = expiration.replace(tzinfo=timezone.utc)
 
-    if datetime.now(timezone.utc) > expiration:
+        if datetime.now(timezone.utc) > expiration:
             raise HTTPException(status_code=404, detail="URL has expired")
 
-return RedirectResponse(url=row["url"])
+    return RedirectResponse(url=row["url"])
