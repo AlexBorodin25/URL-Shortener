@@ -19,3 +19,27 @@ def get_db_conn():
     conn.row_factory = sqlite3.Row
     return conn
 
+def create_table():
+    with get_db_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS urls (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            url TEXT NOT NULL,
+            shortened_url TEXT UNIQUE,
+        )
+        """
+        )
+        conn.commit()
+
+def base62_encode(num: int) -> str:
+    if num == 0:
+        return BASE62_ALPABET[0]
+
+    encoded = ""
+
+    while num > 0:
+        num, remainder = divmod(num, 62)
+        encoded = BASE62_ALPABET[remainder] + encoded
+
+    return encoded
