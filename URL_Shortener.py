@@ -13,6 +13,7 @@ app = FastAPI(title="URL_Shortener")
 
 class UrlRequest(BaseModel):
     url: HttpUrl
+    expiration: Optional[datetime] = None
 
 def get_db_conn():
     conn = sqlite3.connect(DB_FILE)
@@ -24,11 +25,12 @@ def create_table():
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS urls (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url TEXT NOT NULL,
-            shortened_url TEXT UNIQUE,
-        )
-        """
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               url TEXT NOT NULL,
+               short_code TEXT UNIQUE,
+               expiration TEXT
+            )
+            """
         )
         conn.commit()
 
@@ -43,3 +45,35 @@ def base62_encode(num: int) -> str:
         encoded = BASE62_ALPABET[remainder] + encoded
 
     return encoded
+
+@app.on_event("startup")
+def startup():
+    create_table()
+
+@app.post("/shorten")
+def short_code(data: CreateURLRequest, request: Request):
+    expiration = data.expiration.isoformat() if data.expiration else None
+
+    with get_db_conn() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO urls (url, expiration)
+            VALUES (?, ?)""",
+            (str(data.url), expiration),
+        )
+
+        url_id = cursor.lastrowid
+        short_code = base62_encode(url_id)
+
+        conn.execute(
+            """
+            UPDATE urls
+            SET short-code = ?
+            WHERE id = ?""",
+            (short_code, url_id)
+        )
+
+        conn.commit()
+
+    shortened_url = str(request.base_url) + short_code
+
