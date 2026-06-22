@@ -3,8 +3,8 @@ from typing import Optional
 
 import sqlite3
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel, HttpUrl
 
 DB_FILE = "urls.db"
@@ -75,6 +75,55 @@ def short_code(data: UrlRequest, request: Request):
         "expiration": expiration,
     }
 
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>URL Shortener</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                max-width: 500px;
+                margin: 20px auto;
+                padding: 20px auto;
+            }
+            
+            input,button {
+                width: 100%;
+                padding: 10px;
+                margin: 10px auto;
+                font_size: 14px;
+            }
+            
+            button {
+                background: blue;
+                color: white;
+                border: 1px solid black;
+                cursor: pointer;
+            }
+            
+            button:hover {
+                background: red;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>URL Shortener</h1>
+        
+        <form action="/shorten-form" method="post">
+            <label>Enter a URL:</label>
+            <input type="url" name="url" placeholder="https://example.com">
+            
+            <label>Expiration date:</label>
+            <input type="datetime-local" name="expiration">
+            
+            <button type="submit">Shorten URL</button>
+        </form>
+    </body>
+    </html>
+    """
 @app.get("/{short_code}")
 def redirect_url(short_code: str):
     with get_db_conn() as conn:
