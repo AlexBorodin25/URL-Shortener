@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 
 import sqlite3
 
@@ -25,7 +25,7 @@ class UrlRequest(BaseModel):
     url: HttpUrl
     expiration: Optional[datetime] = None
 
-
+@contextmanager
 def get_db_conn():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
