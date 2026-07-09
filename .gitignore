@@ -221,3 +221,8 @@ __marimo__/
 # atabase files
 .*db
 urls.db
+
+# IDE/editor settings
+.idea/
+.vscode/
+*.iml
