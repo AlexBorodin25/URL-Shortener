@@ -11,16 +11,21 @@ from pydantic import BaseModel, HttpUrl
 DB_FILE = "urls.db"
 BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_table()
     yield
+
+
 app = FastAPI(title="URL_Shortener", lifespan=lifespan)
+
 
 class UrlRequest(BaseModel):
     url: HttpUrl
     expiration: Optional[datetime] = None
 
+@contextmanager
 def get_db_conn():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
@@ -30,6 +35,7 @@ def get_db_conn():
     finally:
         conn.close()
 
+
 def create_table():
     with get_db_conn() as conn:
         conn.execute(
@@ -37,6 +43,7 @@ def create_table():
                     url TEXT NOT NULL,short_code TEXT UNIQUE, expiration TEXT)"""
         )
         conn.commit()
+
 
 def base62_encode(num: int) -> str:
     if num == 0:
@@ -65,8 +72,7 @@ def short_code(data: UrlRequest, request: Request):
         short_code = base62_encode(url_id)
 
         conn.execute(
-            """UPDATE urls SET short_code = ? WHERE id = ?""",
-            (short_code, url_id)
+            """UPDATE urls SET short_code = ? WHERE id = ?""", (short_code, url_id)
         )
 
         conn.commit()
@@ -80,6 +86,7 @@ def short_code(data: UrlRequest, request: Request):
         "shortened_url": shortened_url,
         "expiration": expiration,
     }
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -131,11 +138,12 @@ def home():
     </html>
     """
 
+
 @app.post("/shorten-form", response_class=HTMLResponse)
 def shorten_form(
-        request: Request,
-        url: str = Form(...),
-        expiration: Optional[datetime] = Form(None),
+    request: Request,
+    url: str = Form(...),
+    expiration: Optional[datetime] = Form(None),
 ):
     expiration_value = expiration.isoformat() if expiration else None
 
@@ -189,6 +197,8 @@ def shorten_form(
     </body>
     </html>
     """
+
+
 @app.get("/{short_code}")
 def redirect_url(short_code: str):
     with get_db_conn() as conn:
